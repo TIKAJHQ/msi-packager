@@ -54,7 +54,7 @@ function installerFor (components, options) {
 
       options.runAfter ? el('CustomAction', {
 	  Id: "LaunchApplication",
-	  ExeCommand: "/c start \"\" \"%programfiles%\\"+options.name+"\\"+options.executable+"\"",
+	  ExeCommand: "/c start \"\" \"%programfiles%\\"+options.name+"\\"+options.executable+(options.executableArgs||"")+"\"",
 	  Execute: "",
 	  Property: "cmd",
 	  Impersonate: "yes"
@@ -161,7 +161,7 @@ function getComponents (path, options, cb) {
             })
           ]
 
-          if (subPath === options.executable) {
+          if (options.shortcuts && subPath === options.executable) {
             items.push(el('Shortcut', {
               Id: 'StartMenuShortcut',
               Advertise: 'yes',
