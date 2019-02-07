@@ -17,6 +17,9 @@ function generateXml(options, cb) {
 }
 
 function installerFor(components, options) {
+
+    let programFiles = options.arch === "x64" ? "%programfiles%" : "%programfiles(x86)%"
+
     return el('Wix', {
         xmlns: 'http://schemas.microsoft.com/wix/2006/wi'
     }, [
@@ -28,8 +31,39 @@ function installerFor(components, options) {
             Language: '1033',
             Codepage: '1252',
             Version: options.version,
-            Manufacturer: options.manufacturer
+            Manufacturer: options.manufacturer,
         }, [
+            el('Package', {
+                InstallerVersion: "200",
+                Compressed: "yes",
+                Keywords: options.keywords || "",
+                Description: options.description || "",
+                Manufacturer: options.manufacturer,
+                Comments: options.comment || "",
+                InstallScope: options.localInstall ? "perUser" : "perMachine",
+
+            }),
+            el('Icon', {
+                Id: "icon.ico",
+                SourceFile: options.iconPath
+            }),
+
+            el('Property', {
+                Id: 'ARPPRODUCTICON',
+                Value: 'icon.ico'
+            }),
+
+
+            options.urlInfoAbout ? el('Property', {
+                Id: 'ARPURLINFOABOUT',
+                Value: options.urlInfoAbout
+            }) : "",
+
+            options.urlInfoUpdate ? el('Property', {
+                Id: 'ARPURLUPDATEINFO',
+                Value: options.urlInfoUpdate
+            }) : "",
+
 
             el('Property', {
                 Id: 'PREVIOUSVERSIONSINSTALLED',
@@ -51,10 +85,9 @@ function installerFor(components, options) {
                 Id: "cmd",
                 Value: "cmd.exe"
             }) : "",
-
             options.runAfter ? el('CustomAction', {
                 Id: "LaunchApplication",
-                ExeCommand: "/c \"\"%programfiles%\\" + options.name + "\\" + options.executable + "\"\" " + (options.executableArgs || ""),
+                ExeCommand: "/c \"\"" + programFiles + "\\" + options.name + "\\" + options.executable + "\"\" " + (options.executableArgs || ""),
                 Execute: "immediate",
                 Property: "cmd",
                 Impersonate: "yes"
@@ -69,7 +102,7 @@ function installerFor(components, options) {
                     After: 'InstallFinalize'
                 }, ["NOT Installed OR REINSTALL~=\"ALL\""]) : ""
             ]),
-		
+
             el('CustomAction', {
                 Id: "LaunchInstalled",
                 FileKey: options.executable,
@@ -79,12 +112,6 @@ function installerFor(components, options) {
                 // Return: "check"
             }),
 
-            el('Package', {
-                InstallerVersion: "200",
-                Compressed: "yes",
-                Comments: "Windows Installer Package",
-                InstallScope: options.localInstall ? "perUser" : "perMachine"
-            }),
 
             el('Media', {
                 Id: '1',
@@ -92,15 +119,6 @@ function installerFor(components, options) {
                 EmbedCab: 'yes'
             }),
 
-            el('Icon', {
-                Id: "icon.ico",
-                SourceFile: options.iconPath
-            }),
-
-            el('Property', {
-                Id: 'ARPPRODUCTICON',
-                Value: 'icon.ico'
-            }),
 
             el('Directory', {
                 Id: 'TARGETDIR',
