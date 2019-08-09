@@ -19,130 +19,129 @@ function generateXml(options, cb) {
 function installerFor(components, options) {
 
     let programFiles = options.arch === "x64" ? "%programfiles%" : "%programfiles(x86)%"
+    
+    //store install Execute Commands
+    let installExecute = [
+
+
+    ];
+
+    //store prodcut top level information. 
+    let productInformation = [
+        el('Package', {
+            InstallerVersion: "200",
+            Compressed: "yes",
+            Keywords: options.keywords || "",
+            Description: options.description || "",
+            Manufacturer: options.manufacturer,
+            Comments: options.comment || "",
+            InstallScope: options.localInstall ? "perUser" : "perMachine",
+
+        }),
+        el('Icon', {
+            Id: "icon.ico",
+            SourceFile: options.iconPath
+        }),
+
+        el('Property', {
+            Id: 'ARPPRODUCTICON',
+            Value: 'icon.ico'
+        }),
+
+
+        options.urlInfoAbout ? el('Property', {
+            Id: 'ARPURLINFOABOUT',
+            Value: options.urlInfoAbout
+        }) : "",
+
+        options.urlInfoUpdate ? el('Property', {
+            Id: 'ARPURLUPDATEINFO',
+            Value: options.urlInfoUpdate
+        }) : "",
+
+
+        el('Property', {
+            Id: 'PREVIOUSVERSIONSINSTALLED',
+            // Secure: 'yes'
+        }),
+
+        el('Upgrade', {
+            Id: options.upgradeCode
+        }, [
+            el('UpgradeVersion', {
+                Minimum: '0.0.0',
+                Property: "PREVIOUSVERSIONSINSTALLED",
+                IncludeMinimum: "yes",
+                IncludeMaximum: "no"
+            })
+        ]),
+
+        el('Property', {
+            Id: "cmd",
+            Value: "cmd.exe"
+        }),
+        el('Media', {
+            Id: '1',
+            Cabinet: 'app.cab',
+            EmbedCab: 'yes'
+        }),
+        el('Directory', {
+            Id: 'TARGETDIR',
+            Name: 'SourceDir'
+        }, [
+            el('Directory', {
+                Id: getProgramsFolder(options),
+            }, [
+                el('Directory', {
+                    Id: 'INSTALLDIR',
+                    Name: options.name,
+                }, components)
+            ])
+        ]),
+
+        el('Feature', {
+            Id: 'App',
+            Level: '1'
+        }, options.componentIds.map(function (id) {
+            return el('ComponentRef', {Id: id})
+        }))
+    ];
+
+
+    Object.keys(options.customAction).forEach(actionID => {
+        let action = options.customAction[actionID];
+        let attr = {
+            Action: actionID,
+        }
+        attr[action.condition.type] = action.condition.event
+        installExecute.push(el('Custom', attr, [action.condition.install]));
+
+        productInformation.push(
+            el('CustomAction', {
+                Id: actionID,
+                ExeCommand: '/c ""' + programFiles + "\\" + options.name + "\\" + (action.executable || options.executable) + '"" ' + (action.executableArgs || ""),
+                Execute: "immediate",
+                Impersonate: "yes",
+                Return: "check",
+                Property: "cmd"
+            })
+        )
+    });
+
+    //add installer information.
+    productInformation.push(el('InstallExecuteSequence', installExecute));
 
     return el('Wix', {
         xmlns: 'http://schemas.microsoft.com/wix/2006/wi'
-    }, [
-
-        el('Product', {
-            Id: '*',
-            Name: options.name,
-            UpgradeCode: options.upgradeCode,
-            Language: '1033',
-            Codepage: '1252',
-            Version: options.version,
-            Manufacturer: options.manufacturer,
-        }, [
-            el('Package', {
-                InstallerVersion: "200",
-                Compressed: "yes",
-                Keywords: options.keywords || "",
-                Description: options.description || "",
-                Manufacturer: options.manufacturer,
-                Comments: options.comment || "",
-                InstallScope: options.localInstall ? "perUser" : "perMachine",
-
-            }),
-            el('Icon', {
-                Id: "icon.ico",
-                SourceFile: options.iconPath
-            }),
-
-            el('Property', {
-                Id: 'ARPPRODUCTICON',
-                Value: 'icon.ico'
-            }),
-
-
-            options.urlInfoAbout ? el('Property', {
-                Id: 'ARPURLINFOABOUT',
-                Value: options.urlInfoAbout
-            }) : "",
-
-            options.urlInfoUpdate ? el('Property', {
-                Id: 'ARPURLUPDATEINFO',
-                Value: options.urlInfoUpdate
-            }) : "",
-
-
-            el('Property', {
-                Id: 'PREVIOUSVERSIONSINSTALLED',
-                Secure: 'yes'
-            }),
-
-            el('Upgrade', {
-                Id: options.upgradeCode
-            }, [
-                el('UpgradeVersion', {
-                    Minimum: '0.0.0',
-                    Property: "PREVIOUSVERSIONSINSTALLED",
-                    IncludeMinimum: "yes",
-                    IncludeMaximum: "no"
-                })
-            ]),
-
-            options.runAfter ? el('Property', {
-                Id: "cmd",
-                Value: "cmd.exe"
-            }) : "",
-            options.runAfter ? el('CustomAction', {
-                Id: "LaunchApplication",
-                ExeCommand: "/c \"\"" + programFiles + "\\" + options.name + "\\" + options.executable + "\"\" " + (options.executableArgs || ""),
-                Execute: "immediate",
-                Property: "cmd",
-                Impersonate: "yes"
-            }) : "",
-
-            el('InstallExecuteSequence', [
-                el('RemoveExistingProducts', {
-                    Before: "InstallInitialize"
-                }),
-                options.runAfter ? el('Custom', {
-                    Action: 'LaunchApplication',
-                    After: 'InstallFinalize'
-                }, ["NOT Installed OR REINSTALL~=\"ALL\""]) : ""
-            ]),
-
-            el('CustomAction', {
-                Id: "LaunchInstalled",
-                FileKey: options.executable,
-                ExeCommand: options.executableArgs,
-                Execute: "immediate",
-                Impersonate: "yes",
-                // Return: "check"
-            }),
-
-
-            el('Media', {
-                Id: '1',
-                Cabinet: 'app.cab',
-                EmbedCab: 'yes'
-            }),
-
-
-            el('Directory', {
-                Id: 'TARGETDIR',
-                Name: 'SourceDir'
-            }, [
-                el('Directory', {
-                    Id: getProgramsFolder(options),
-                }, [
-                    el('Directory', {
-                        Id: 'INSTALLDIR',
-                        Name: options.name,
-                    }, components)
-                ])
-            ]),
-
-            el('Feature', {
-                Id: 'App',
-                Level: '1'
-            }, options.componentIds.map(function (id) {
-                return el('ComponentRef', {Id: id})
-            }))
-
-        ])
-    ])
+    }, [el('Product', {
+        Id: '*',
+        Name: options.name,
+        UpgradeCode: options.upgradeCode,
+        Language: '1033',
+        Codepage: '1252',
+        Version: options.version,
+        Manufacturer: options.manufacturer,
+    }, productInformation)]);
 }
 
 function getComponents(path, options, cb) {
