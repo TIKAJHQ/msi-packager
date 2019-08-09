@@ -120,7 +120,7 @@ function installerFor(components, options) {
             el('CustomAction', {
                 Id: actionID,
                 ExeCommand: '/c ""' + programFiles + "\\" + options.name + "\\" + (action.executable || options.executable) + '"" ' + (action.executableArgs || ""),
-                Execute: "immediate",
+                Execute: "deferred",
                 Impersonate: "yes",
                 Return: "check",
                 Property: "cmd"
