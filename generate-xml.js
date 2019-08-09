@@ -59,10 +59,13 @@ function installerFor(components, options) {
             Value: options.urlInfoUpdate
         }) : "",
 
-
         el('Property', {
             Id: 'PREVIOUSVERSIONSINSTALLED',
             // Secure: 'yes'
+        }),
+        el('Property', {
+            Id: 'MSIUSEREALADMINDETECTION',
+            Value: '1'
         }),
 
         el('Upgrade', {
@@ -121,7 +124,7 @@ function installerFor(components, options) {
                 Id: actionID,
                 ExeCommand: '/c ""' + programFiles + "\\" + options.name + "\\" + (action.executable || options.executable) + '"" ' + (action.executableArgs || ""),
                 Execute: "deferred",
-                Impersonate: "yes",
+                Impersonate: "no",
                 Return: "check",
                 Property: "cmd"
             })
