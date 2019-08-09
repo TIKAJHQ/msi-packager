@@ -130,6 +130,10 @@ function installerFor(components, options) {
             })
         )
     });
+    
+    installExecute.push(el('RemoveExistingProducts', {
+        Before:"InstallInitialize"
+    }));
 
     //add installer information.
     productInformation.push(el('InstallExecuteSequence', installExecute));
